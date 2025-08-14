@@ -20,3 +20,26 @@ Driver shim method, framework and technique created and shared freely (MIT) by m
 https://github.com/mbucchia/Pimax-EyeTracker-SteamVR
 
 
+BUILD INSTRUCTIONS:
+
+First, follow the instructions / README in the other project to get familiar with it. All credit is due to mbucchia here, I just plugged in the PSVR 2 gazes instead of Pimax, using IPC.
+
+This client code or server (DLL) have to be compiled to use the same named pipe string for direct IPC communication of the gazes and handshake,
+
+#define PSVR2_SERVER_NAMED_PIPE_NAME "\\.\pipe\PlaystationVR2ServerPipe"
+
+I also reduced the data sent over IPC to avoid transferring junk / garbage.
+
+struct XRGazeState
+{
+	XrVector3f direction_ = { 0.0f, 0.0f, -1.0f };
+	bool is_valid_ = false;
+};
+
+struct AllXRGazeStates
+{
+	XRGazeState combined_gaze_;
+	XRGazeState per_eye_gazes_[BVR::NUM_EYES];
+};
+
+AllXRGazeStates is the data type that should be sent over IPC. I also did not use a thread to copy the data out from IPC on the client, it is fast enough I think to do it synchronously as I have.
