@@ -43,3 +43,5 @@ I also reduced the data sent over IPC to avoid transferring junk / garbage.
 	};
 
 AllXRGazeStates is the data type that should be sent over IPC. I also did not use a thread to copy the data out from IPC on the client, it is fast enough I think to do it synchronously as I have.
+
+NOTE: EXT gaze interaction only uses combined_gaze_ above, not per_eye_gazes_, but xrLocate could, in theory, switch to either open eye (via 1/2 IPD) and the client could then figure out which eye is open and which is shut. EXT could also always return the gaze from your dominant eye, for ex.
