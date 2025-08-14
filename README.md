@@ -30,16 +30,16 @@ This client code or server (DLL) have to be compiled to use the same named pipe 
 
 I also reduced the data sent over IPC to avoid transferring junk / garbage.
 
-struct XRGazeState
-{
-	XrVector3f direction_ = { 0.0f, 0.0f, -1.0f };
-	bool is_valid_ = false;
-};
+	struct XRGazeState
+	{
+		XrVector3f direction_ = { 0.0f, 0.0f, -1.0f };
+		bool is_valid_ = false;
+	};
 
-struct AllXRGazeStates
-{
-	XRGazeState combined_gaze_;
-	XRGazeState per_eye_gazes_[BVR::NUM_EYES];
-};
+	struct AllXRGazeStates
+	{
+		XRGazeState combined_gaze_;
+		XRGazeState per_eye_gazes_[BVR::NUM_EYES];
+	};
 
 AllXRGazeStates is the data type that should be sent over IPC. I also did not use a thread to copy the data out from IPC on the client, it is fast enough I think to do it synchronously as I have.
