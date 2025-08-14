@@ -1,0 +1,5 @@
+{
+  "driver_psvr2_shim": {
+    "loadPriority": 1000
+  }
+}

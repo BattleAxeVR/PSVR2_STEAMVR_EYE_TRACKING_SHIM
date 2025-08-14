@@ -1,0 +1,9 @@
+{
+	"alwaysActivate": true,
+	"name" : "psvr2_shim",
+
+	"hmd_presence" :
+	[
+		"*.*"
+	]
+}
