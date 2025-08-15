@@ -199,20 +199,23 @@ bool PSVR2EyeTracker::update_gazes()
 		const RemoteGazeState& left_gaze = gaze_response.payload.per_eye_gazes_[BVR::LEFT];
 		const RemoteGazeState& right_gaze = gaze_response.payload.per_eye_gazes_[BVR::RIGHT];
 
-		const glm::vec3 left_gaze_dir_vec3 = glm::normalize(glm::vec3(-left_gaze.gaze_dir_.x, left_gaze.gaze_dir_.y, -left_gaze.gaze_dir_.z));
-		const glm::vec3 right_gaze_dir_vec3 = glm::normalize(glm::vec3(-right_gaze.gaze_dir_.x, right_gaze.gaze_dir_.y, -right_gaze.gaze_dir_.z));
+		//const glm::vec3 left_gaze_dir_vec3 = glm::normalize(glm::vec3(-left_gaze.gaze_dir_.x, left_gaze.gaze_dir_.y, -left_gaze.gaze_dir_.z));
+		//const glm::vec3 right_gaze_dir_vec3 = glm::normalize(glm::vec3(-right_gaze.gaze_dir_.x, right_gaze.gaze_dir_.y, -right_gaze.gaze_dir_.z));
 
-		const XrVector3f left_gaze_dir = { left_gaze_dir_vec3.x, left_gaze_dir_vec3.y, left_gaze_dir_vec3.z };
-		const XrVector3f right_gaze_dir = { right_gaze_dir_vec3.x, right_gaze_dir_vec3.y, right_gaze_dir_vec3.z };
+		//const XrVector3f left_gaze_dir = { left_gaze_dir_vec3.x, left_gaze_dir_vec3.y, left_gaze_dir_vec3.z };
+		//const XrVector3f right_gaze_dir = { right_gaze_dir_vec3.x, right_gaze_dir_vec3.y, right_gaze_dir_vec3.z };
 
-		const bool is_left_valid_and_open = (left_gaze.is_gaze_dir_valid_ && (!left_gaze.is_blink_valid_ || !left_gaze.blink_));
-		const bool is_right_valid_and_open = (right_gaze.is_gaze_dir_valid_ && (!right_gaze.is_blink_valid_ || !right_gaze.blink_));
+		const XrVector3f left_gaze_dir = { -left_gaze.gaze_dir_.x, left_gaze.gaze_dir_.y, -left_gaze.gaze_dir_.z };
+		const XrVector3f right_gaze_dir = { -right_gaze.gaze_dir_.x, right_gaze.gaze_dir_.y, -right_gaze.gaze_dir_.z };
+
+		const bool is_left_valid_and_open = true;// (left_gaze.is_gaze_dir_valid_ && (!left_gaze.is_blink_valid_ || !left_gaze.blink_));
+		const bool is_right_valid_and_open = true;// (right_gaze.is_gaze_dir_valid_ && (!right_gaze.is_blink_valid_ || !right_gaze.blink_));
 
 #if ENABLE_PSVR2_EYE_TRACKING_COMBINED_GAZE
 		combined_gaze_.is_valid_ = (is_left_valid_and_open || is_right_valid_and_open);
 
 		if (combined_gaze_.is_valid_)
-		{
+		{/*
 			if (is_left_valid_and_open && is_right_valid_and_open)
 			{
 				const glm::vec3 combined_gaze_dir_vec3 = glm::normalize((left_gaze_dir_vec3 + right_gaze_dir_vec3) * 0.5f);
@@ -222,7 +225,7 @@ bool PSVR2EyeTracker::update_gazes()
 			{
 				combined_gaze_.direction_ = left_gaze_dir;
 			}
-			else if(is_right_valid_and_open)
+			else if(is_right_valid_and_open)*/
 			{
 				combined_gaze_.direction_ = right_gaze_dir;
 			}
