@@ -3,7 +3,7 @@
 //--------------------------------------------------------------------------------------
 
 // Author: Bela Kampis
-// Date: July 5th, 2025
+// Date: April 11, 2025
 
 // MIT License
 //
@@ -26,17 +26,27 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef PSVR2_EYE_TRACKING_H
-#define PSVR2_EYE_TRACKING_H
+#ifndef PSVR2_EYE_TRACKING_SOCKETS_H
+#define PSVR2_EYE_TRACKING_SOCKETS_H
 
 #include "defines.h"
 
-#if ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
-
+#if ENABLE_PSVR2_EYE_TRACKING_SOCKETS
 #include <stdint.h>
+#include <WinSock2.h>
 
-#define PSVR2_SERVER_NAMED_PIPE_NAME "\\\\.\\pipe\\PlaystationVR2ServerPipe"
 #define PSVR2_SERVER_CONNECT_WAIT_TIME 5000
+#define IPC_PORT 3364
+#define IPC_VERSION 1
+
+#define SOCKET_CONNECT_RETRIES 15
+#define SOCKET_CONNECT_SLEEP_TIME_MS 15
+
+#define HANDSHAKE_RETRIES 5
+#define HANDSHAKE_SLEEP_TIME_MS 100
+
+#define GET_GAZE_RETRIES 3
+#define GET_GAZE_SLEEP_TIME_MS 5
 
 #if ENABLE_GAZE_CALIBRATION
 #include "gaze_calibration.h"
@@ -63,41 +73,84 @@ namespace BVR
 		bool is_valid_ = false;
 	};
 
-	struct AllXRGazeStates
+	enum ECommandType : uint16_t 
 	{
-		XRGazeState combined_gaze_;
-		XRGazeState per_eye_gazes_[BVR::NUM_EYES];
+		REQUEST_HANDSHAKE_ = 2,
+		REQUEST_HANDSHAKE_RESULT_,
+		REQUEST_GAZES_,
+		REQUEST_GAZES_RESULT_,
 	};
 
-	enum RequestType
+	struct CommandHeader
 	{
-		UNKNOWN_,
-		START_HANDSHAKE_,
-		GET_GAZES_,
+		ECommandType type;
+		int32_t dataLen;
 	};
 
-	enum ResponseType
+	struct CommandDataClientRequestHandshake
 	{
-		ERROR_,
-		HANDSHAKE_OK_,
-		GET_GAZES_OK_,
+		uint16_t ipcVersion;
+		uint32_t processId;
 	};
 
-	struct Request
+	enum EHandshakeResultType : uint8_t 
 	{
-		RequestType type_;
-		Request() : type_(RequestType::UNKNOWN_) {}
-		Request(RequestType type) : type_(type) {}
+		HANDSHAKE_RESULT_FAILED_,
+		HANDSHAKE_RESULT_SUCCESS_,
+		HANDSHAKE_RESULT_OUT_OF_DATE_,
 	};
 
-	struct Response
+	struct CommandDataServerHandshakeResult
 	{
-		ResponseType type_;
-		AllXRGazeStates gazes_;
-
-		Response() : type_(ResponseType::ERROR_), gazes_{} {}
-		Response(ResponseType type) : type_(type), gazes_{} {}
+		EHandshakeResultType result;
+		uint16_t ipcVersion;
 	};
+
+#pragma pack(push, 1)
+	struct RemoteGazeState
+	{
+		bool is_gaze_origin_valid_;
+		XrVector3f gaze_origin_;
+
+		bool is_gaze_dir_valid_;
+		XrVector3f gaze_dir_;
+
+		bool is_pupil_valid_;
+		float pupil_diameter_;
+
+		bool is_blink_valid_;
+		bool blink_;
+	};
+
+	struct CommandDataServerGazeDataResult
+	{
+		//RemoteGazeState combined_gaze_;
+		RemoteGazeState per_eye_gazes_[BVR::NUM_EYES];
+	};
+
+	struct HandShakeRequest
+	{
+		CommandHeader header;
+		CommandDataClientRequestHandshake payload;
+	};
+
+	struct HandShakeResponse
+	{
+		CommandHeader header;
+		CommandDataServerHandshakeResult payload;
+	};
+
+	struct GazeRequest
+	{
+		CommandHeader header;
+	};
+
+	struct GazeResponse
+	{
+		CommandHeader header;
+		CommandDataServerGazeDataResult payload;
+	};
+#pragma pack(pop)
 
     class PSVR2EyeTracker
     {
@@ -248,19 +301,15 @@ namespace BVR
 		bool apply_calibration_ = false;
 #endif
 
-		bool send_and_receive(const Request& request, Response& response) const;
-		bool send_request(const Request& request) const;
-		bool receive_request(Response& response) const;
-
-		HANDLE named_pipe_handle_ = INVALID_HANDLE_VALUE;
+		SOCKET socket_ = INVALID_SOCKET;
 
     };
 }
 
 
-#endif // ENABLE_PSVR2_EYE_TRACKING
+#endif // ENABLE_PSVR2_EYE_TRACKING_SOCKETS
 
 
-#endif // ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#endif // PSVR2_EYE_TRACKING_SOCKETS_H
 
 

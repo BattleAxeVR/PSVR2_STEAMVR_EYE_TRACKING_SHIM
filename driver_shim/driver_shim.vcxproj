@@ -104,6 +104,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/Include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -145,6 +146,7 @@ copy $(SolutionDir)\tracing\Capture-ETL.bat $(SolutionDir)\bin\distribution\trac
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/Include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -186,6 +188,7 @@ copy $(SolutionDir)\tracing\Capture-ETL.bat $(SolutionDir)\bin\distribution\trac
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/Include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -232,6 +235,7 @@ copy $(SolutionDir)\tracing\Capture-ETL.bat $(SolutionDir)\bin\distribution\trac
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>$(VULKAN_SDK)/Include;</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -273,6 +277,7 @@ copy $(SolutionDir)\tracing\Capture-ETL.bat $(SolutionDir)\bin\distribution\trac
     <ClInclude Include="DetourUtils.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="psvr2_eye_tracking.h" />
+    <ClInclude Include="psvr2_eye_tracking_sockets.h" />
     <ClInclude Include="ShimDriverManager.h" />
     <ClInclude Include="Tracing.h" />
   </ItemGroup>
@@ -293,6 +298,7 @@ copy $(SolutionDir)\tracing\Capture-ETL.bat $(SolutionDir)\bin\distribution\trac
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="psvr2_eye_tracking.cpp" />
+    <ClCompile Include="psvr2_eye_tracking_sockets.cpp" />
     <ClCompile Include="ShimDriverManager.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -29,7 +29,13 @@
 #include "defines.h"
 
 #if ENABLE_PSVR2_EYE_TRACKING
+
+#if ENABLE_PSVR2_EYE_TRACKING_SOCKETS
+#include "psvr2_eye_tracking_sockets.h"
+#else
 #include "psvr2_eye_tracking.h"
+#endif
+
 #endif
 
 namespace vr {

@@ -29,9 +29,12 @@
 #include "pch.h"
 #include "defines.h"
 
-#if ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#if ENABLE_PSVR2_EYE_TRACKING_SOCKETS
 
-#include "psvr2_eye_tracking.h"
+#include "psvr2_eye_tracking_sockets.h"
+#include <glm/glm.hpp>
+
+#pragma comment(lib, "Ws2_32.lib")
 
 namespace BVR 
 {
@@ -49,44 +52,83 @@ bool PSVR2EyeTracker::connect()
 {
 	if(!is_connected_)
 	{
-		// Connect to pipe job
-		while(true)
-		{
-			LPTSTR named_pipe_name = (LPTSTR)TEXT(PSVR2_SERVER_NAMED_PIPE_NAME);
-			named_pipe_handle_ = CreateFile(named_pipe_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+		WSADATA wsa_data{};
+		WSAStartup(MAKEWORD(2, 2), &wsa_data);
 
-			if(named_pipe_handle_ != INVALID_HANDLE_VALUE)
+		socket_ = socket(AF_INET, SOCK_STREAM, 0);
+		{
+			unsigned long one = 1;
+			ioctlsocket(socket_, FIONBIO, (unsigned long*)&one);
+		}
+
+		{
+			struct sockaddr_in addr {};
+			addr.sin_family = AF_INET;
+			addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+			addr.sin_port = htons(IPC_PORT);
+
+			unsigned int retries = SOCKET_CONNECT_RETRIES;
+			while(retries) 
+			{
+				if(!::connect(socket_, (struct sockaddr*)&addr, sizeof(addr)))
+				{
+					break;
+				}
+				if(WSAGetLastError() == WSAEISCONN) 
+				{
+					break;
+				}
+
+				Sleep(SOCKET_CONNECT_SLEEP_TIME_MS);
+				retries--;
+			}
+
+			const bool connected_ok = (retries > 0);
+
+			if(!connected_ok)
+			{
+				return false;
+			}
+		}
+
+		HandShakeRequest handshake_request{};
+		handshake_request.header.type = REQUEST_HANDSHAKE_;
+		handshake_request.header.dataLen = sizeof(handshake_request.payload);
+		handshake_request.payload.ipcVersion = IPC_VERSION;
+		handshake_request.payload.processId = GetCurrentProcessId();
+		::send(socket_, (char*)&handshake_request, sizeof(handshake_request), 0);
+
+		HandShakeResponse handshake_response{};
+
+		unsigned int retries = HANDSHAKE_RETRIES; 
+		char* buffer = (char*)&handshake_response;
+		int offset = 0;
+
+		while(retries) 
+		{
+			const auto result = ::recv(socket_, buffer + offset, sizeof(handshake_response) - offset, 0);
+			if(result > 0) 
+			{
+				offset += result;
+			}
+			if(offset >= sizeof(handshake_response))
 			{
 				break;
 			}
 
-			if(GetLastError() != ERROR_PIPE_BUSY)
-			{
-				return false;
-			}
-
-			if(!WaitNamedPipe(named_pipe_name, PSVR2_SERVER_CONNECT_WAIT_TIME))
-			{
-				return false;
-			}
+			Sleep(HANDSHAKE_SLEEP_TIME_MS);
+			retries--;
 		}
 
-		DWORD mode = PIPE_READMODE_MESSAGE;
+		const bool handshake_ok = (retries > 0) 
+			&& (handshake_response.header.type == REQUEST_HANDSHAKE_RESULT_) && (handshake_response.payload.result == HANDSHAKE_RESULT_SUCCESS_);
 
-		if(!SetNamedPipeHandleState(named_pipe_handle_, &mode, 0, 0))
+		if(!handshake_ok)
 		{
 			return false;
 		}
 
-		Response handshake_response;
-		const bool handshake_ok = send_and_receive(Request(START_HANDSHAKE_), handshake_response);
-
-		if(!handshake_ok || (handshake_response.type_ != ResponseType::HANDSHAKE_OK_))
-		{
-			return false;
-		}
-
-		is_connected_ = handshake_ok;
+		is_connected_ = true;
 
 #if ENABLE_PSVR2_EYE_TRACKING_AUTOMATICALLY
 		set_enabled(is_connected_);
@@ -101,55 +143,18 @@ void PSVR2EyeTracker::disconnect()
 {
 	if(is_connected_)
 	{
-		if(named_pipe_handle_ != INVALID_HANDLE_VALUE)
+		if(socket_ != INVALID_SOCKET) 
 		{
-			CloseHandle(named_pipe_handle_);
-			named_pipe_handle_ = INVALID_HANDLE_VALUE;
+			shutdown(socket_, 2);
+			closesocket(socket_);
+			socket_ = INVALID_SOCKET;
 		}
+
+		WSACleanup();
 
 		is_connected_ = false;
 	}
 }
-
-bool PSVR2EyeTracker::send_and_receive(const Request& request, Response& response) const
-{
-	const bool request_ok = send_request(request);
-	const bool response_ok = request_ok && receive_request(response);
-
-	return response_ok;
-}
-
-bool PSVR2EyeTracker::send_request(const Request& request) const
-{
-	DWORD write_size = 0;
-	const BOOL write_ok = WriteFile(named_pipe_handle_, &request, sizeof(request), &write_size, 0);
-	return write_ok;
-}
-
-bool PSVR2EyeTracker::receive_request(Response& response) const
-{
-	DWORD read_size = 0;
-
-	const BOOL success = ReadFile(named_pipe_handle_, &response, sizeof(response), &read_size, 0);
-
-	if(!success)
-	{
-		const DWORD lastError = GetLastError();
-
-		if(lastError != ERROR_MORE_DATA)
-		{
-			return false;
-		}
-	}
-
-	if(read_size != sizeof(response))
-	{
-		return false;
-	}
-
-	return true;
-}
-
 
 bool PSVR2EyeTracker::update_gazes()
 {
@@ -158,22 +163,78 @@ bool PSVR2EyeTracker::update_gazes()
 		return false;
 	}
 
-	AllXRGazeStates xr_gaze_states = {};
-	Response gaze_response;
+	GazeRequest gaze_request{};
+	gaze_request.header.type = REQUEST_GAZES_;
+	gaze_request.header.dataLen = 0;
 
-	const bool gazes_ok = send_and_receive(Request(GET_GAZES_), gaze_response);
+	::send(socket_, (char*)&gaze_request, sizeof(gaze_request), 0);
+
+	GazeResponse gaze_response{};
+
+	unsigned int retries = GET_GAZE_RETRIES;
+	char* buffer = (char*)&gaze_response;
+	int offset = 0;
+
+	while(retries) 
+	{
+		const auto result = recv(socket_, buffer + offset, sizeof(gaze_response) - offset, 0);
+
+		if(result > 0) 
+		{
+			offset += result;
+		}
+		if(offset >= sizeof(gaze_response))
+		{
+			break;
+		}
+
+		Sleep(GET_GAZE_SLEEP_TIME_MS);
+		retries--;
+	}
+
+	const bool gazes_ok = (retries > 0) && (gaze_response.header.type == REQUEST_GAZES_RESULT_);
 
 	if (gazes_ok)
 	{
-		memcpy(&xr_gaze_states, &gaze_response.gazes_, sizeof(xr_gaze_states));
+		const RemoteGazeState& left_gaze = gaze_response.payload.per_eye_gazes_[BVR::LEFT];
+		const RemoteGazeState& right_gaze = gaze_response.payload.per_eye_gazes_[BVR::RIGHT];
+
+		const glm::vec3 left_gaze_dir_vec3 = glm::normalize(glm::vec3(-left_gaze.gaze_dir_.x, left_gaze.gaze_dir_.y, -left_gaze.gaze_dir_.z));
+		const glm::vec3 right_gaze_dir_vec3 = glm::normalize(glm::vec3(-right_gaze.gaze_dir_.x, right_gaze.gaze_dir_.y, -right_gaze.gaze_dir_.z));
+
+		const XrVector3f left_gaze_dir = { left_gaze_dir_vec3.x, left_gaze_dir_vec3.y, left_gaze_dir_vec3.z };
+		const XrVector3f right_gaze_dir = { right_gaze_dir_vec3.x, right_gaze_dir_vec3.y, right_gaze_dir_vec3.z };
+
+		const bool is_left_valid_and_open = (left_gaze.is_gaze_dir_valid_ && (!left_gaze.is_blink_valid_ || !left_gaze.blink_));
+		const bool is_right_valid_and_open = (right_gaze.is_gaze_dir_valid_ && (!right_gaze.is_blink_valid_ || !right_gaze.blink_));
 
 #if ENABLE_PSVR2_EYE_TRACKING_COMBINED_GAZE
-		combined_gaze_ = xr_gaze_states.combined_gaze_;
+		combined_gaze_.is_valid_ = (is_left_valid_and_open || is_right_valid_and_open);
+
+		if (combined_gaze_.is_valid_)
+		{
+			if (is_left_valid_and_open && is_right_valid_and_open)
+			{
+				const glm::vec3 combined_gaze_dir_vec3 = glm::normalize((left_gaze_dir_vec3 + right_gaze_dir_vec3) * 0.5f);
+				combined_gaze_.direction_ = { combined_gaze_dir_vec3.x, combined_gaze_dir_vec3.y, combined_gaze_dir_vec3.z };
+			}
+			else if (is_left_valid_and_open)
+			{
+				combined_gaze_.direction_ = left_gaze_dir;
+			}
+			else if(is_right_valid_and_open)
+			{
+				combined_gaze_.direction_ = right_gaze_dir;
+			}
+		}
 #endif
 
 #if ENABLE_PSVR2_EYE_TRACKING_PER_EYE_GAZES
-		per_eye_gazes_[LEFT] = xr_gaze_states.per_eye_gazes_[LEFT];
-		per_eye_gazes_[RIGHT] = xr_gaze_states.per_eye_gazes_[RIGHT];
+		per_eye_gazes_[LEFT].direction_ = left_gaze_dir;
+		per_eye_gazes_[LEFT].is_valid_ = is_left_valid_and_open;
+
+		per_eye_gazes_[RIGHT].direction_ = right_gaze_dir;
+		per_eye_gazes_[RIGHT].is_valid_ = is_right_valid_and_open;
 #endif
 
 		return true;
@@ -325,7 +386,7 @@ bool PSVR2EyeTracker::load_calibrations()
 #endif
 
 #if ENABLE_PSVR2_EYE_TRACKING_COMBINED_GAZE
-	success &= calibrations_[COMBINED_CALIBRATION_INDEX].reset_calibration();
+	success &= calibrations_[COMBINED_CALIBRATION_INDEX].load_calibration();
 #endif
 
 	return success;
@@ -463,4 +524,4 @@ GLMPose PSVR2EyeTracker::get_calibration_cube() const
 } // BVH
 
 
-#endif // ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#endif // ENABLE_PSVR2_EYE_TRACKING_SOCKETS
