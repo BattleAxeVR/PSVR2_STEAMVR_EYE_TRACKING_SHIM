@@ -10,9 +10,9 @@ namespace BVR
 	const int LEFT = 0;
 	const int RIGHT = 1;
 	const int NUM_EYES = 2;
+	const int BOTH_EYES = 2;
 }
 
-#define ENABLE_DUMMY_ET_GAZES 1
 #define EYE_TRACKING_POLLING_RATE_MS 4
 
 #define ENABLE_PSVR2_EYE_TRACKING 1
