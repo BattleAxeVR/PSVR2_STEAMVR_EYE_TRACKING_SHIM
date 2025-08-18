@@ -6,8 +6,6 @@ NOTE: THIS REPO HAS NO NDA'ed 3RD PARTY PRIVATE UNRELEASED CODE or BINARIES IN I
 
 WARNING: USE AT YOUR OWN RISK!!! No Warranty is provided!
 
-This work relies on a THIRD PARTY closed-source and as-yet unreleased DLL (do NOT ask me for it).
-
 Calibration isn't finished yet, it will be done in a separate app.
 
 <img width="808" height="631" alt="image" src="https://github.com/user-attachments/assets/1c95fb33-5fdf-4cc7-b2d7-5a3df6539897" />
