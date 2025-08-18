@@ -29,7 +29,7 @@
 #include "pch.h"
 #include "defines.h"
 
-#if ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#if ENABLE_PSVR2_EYE_TRACKING
 
 #include "psvr2_eye_tracking.h"
 
@@ -463,4 +463,4 @@ GLMPose PSVR2EyeTracker::get_calibration_cube() const
 } // BVH
 
 
-#endif // ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#endif // ENABLE_PSVR2_EYE_TRACKING

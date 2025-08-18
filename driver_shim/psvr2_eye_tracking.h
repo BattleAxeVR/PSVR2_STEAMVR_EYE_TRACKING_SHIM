@@ -31,7 +31,7 @@
 
 #include "defines.h"
 
-#if ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#if ENABLE_PSVR2_EYE_TRACKING
 
 #include <stdint.h>
 
@@ -261,6 +261,6 @@ namespace BVR
 #endif // ENABLE_PSVR2_EYE_TRACKING
 
 
-#endif // ENABLE_PSVR2_EYE_TRACKING_NAMED_PIPES
+#endif // ENABLE_PSVR2_EYE_TRACKING
 
 
